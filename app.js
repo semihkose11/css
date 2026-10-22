@@ -20,7 +20,7 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const fmtDate=t=>t?new Date(t).toLocaleDateString('tr-TR',{day:'2-digit',month:'short',year:'numeric'}):'';
 const fmtDT=t=>t?new Date(t).toLocaleString('tr-TR',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
 function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2800)}
-const who=e=>e||'—';
+const who=e=>e?(S.people&&S.people[e])||e:'—';
 
 /* ---------- config ---------- */
 function getCfg(){
@@ -53,24 +53,23 @@ function renderSetup(libFail){
   $('#cfgSave').onclick=()=>{try{localStorage.setItem('gbk_cfg',JSON.stringify({url:$('#cfgUrl').value.trim(),key:$('#cfgKey').value.trim()}))}catch{}location.reload()};
 }
 function renderLogin(msg){
-  $('#logoutBtn').hidden=true;$('#userBar').textContent='';$('#backBtn').hidden=true;modal=null;renderModal();
+  $('#logoutBtn').hidden=true;$('#pwBtn').hidden=true;$('#usersBtn').hidden=true;S.me=null;$('#userBar').textContent='';$('#backBtn').hidden=true;modal=null;renderModal();
   $('#app').innerHTML=`<form class="auth" id="loginForm"><div class="eyebrow">Giriş</div><h2>Hesabınıza girin</h2>
   ${msg?`<div class="banner">${esc(msg)}</div>`:''}
   <label class="f" for="lEmail">E-posta<input id="lEmail" type="email" autocomplete="email" required></label>
   <label class="f" for="lPass">Şifre<input id="lPass" type="password" autocomplete="current-password" minlength="6" required></label>
   <button class="btn primary" type="submit">Giriş yap</button>
-  <button class="btn" type="button" id="signupBtn">Yeni hesap oluştur</button>
-  <p class="muted" style="margin:0;font-size:13px">Yeni hesapta e-postanıza gelen onay bağlantısına tıklamanız gerekebilir.</p></form>`;
+  <p class="muted" style="margin:0;font-size:13px">Hesabınız yoksa yöneticinizden isteyin.</p></form>`;
   const em=()=>$('#lEmail').value.trim(),pw=()=>$('#lPass').value;
-  $('#loginForm').onsubmit=async e=>{e.preventDefault();const {error}=await sb.auth.signInWithPassword({email:em(),password:pw()});if(error)renderLogin(error.message==='Invalid login credentials'?'E-posta veya şifre hatalı.':error.message)};
-  $('#signupBtn').onclick=async()=>{if(!em()||pw().length<6){toast('E-posta ve en az 6 karakterli şifre girin.');return}
-    const {data,error}=await sb.auth.signUp({email:em(),password:pw()});
-    if(error)renderLogin(error.message);else if(!data.session)renderLogin('Hesap oluşturuldu. E-postanızdaki onay bağlantısına tıklayıp giriş yapın.')};
+  $('#loginForm').onsubmit=async e=>{e.preventDefault();const {error}=await sb.auth.signInWithPassword({email:em(),password:pw()});if(error)renderLogin(error.message==='Invalid login credentials'?'E-posta veya şifre hatalı.':/banned/i.test(error.message)?'Bu hesap kullanıma kapalı. Yöneticinizle görüşün.':error.message)};
 }
 $('#logoutBtn').onclick=()=>sb.auth.signOut();
 
 async function start(){
-  $('#logoutBtn').hidden=false;$('#userBar').textContent=session.user.email||'';
+  const {data:me}=await sb.from('profiles').select('*').eq('id',session.user.id).maybeSingle();
+  if(!me||!me.active){await sb.auth.signOut();renderLogin('Bu hesap kullanıma kapalı. Yöneticinizle görüşün.');return}
+  S.me=me;await loadPeople();
+  $('#logoutBtn').hidden=false;$('#pwBtn').hidden=false;$('#usersBtn').hidden=!isAdmin();$('#userBar').textContent=me.full_name||session.user.email||'';
   await loadProjects();
   if(channel)sb.removeChannel(channel);
   channel=sb.channel('db').on('postgres_changes',{event:'*',schema:'public',table:'projects'},queueReload)
@@ -106,10 +105,10 @@ $('#backBtn').onclick=leaveProject;
 function render(){
   if(!session)return;
   const app=$('#app');
-  $('#backBtn').hidden=S.view!=='project';
+  $('#backBtn').hidden=S.view==='projects';
   $('#hdrSub').textContent=S.view==='project'&&proj()?(proj().ship||proj().name):'Kamera · kablo · ağ cihazı envanteri';
   let h='';if(S.err)h+=`<div class="banner">${esc(S.err)}</div>`;
-  h+=S.view==='projects'?renderProjects():renderProject();
+  h+=S.view==='users'?renderUsers():S.view==='projects'?renderProjects():renderProject();
   const ae=document.activeElement,aid=ae?.id,pos=ae?.selectionStart;
   app.innerHTML=h;
   if(aid){const el=document.getElementById(aid);if(el){el.focus();try{if(pos!=null)el.setSelectionRange(pos,pos)}catch{}}}
@@ -186,7 +185,7 @@ document.addEventListener('click',e=>{
     case 'exportCsv':exportCsv();return;
     case 'exportXlsx':exportXlsx();return;
     case 'exportPdf':exportPdf();return;
-    default:return;
+    default:if(!userAct(b.dataset.act,id))return;
   }
   renderModal();
 });
@@ -222,7 +221,7 @@ function renderModal(){
       ${field('note','Notlar','textarea',d,true)}
       <label class="f full" style="flex-direction:row;align-items:center;gap:8px;color:var(--ink)"><input type="checkbox" id="f_done" data-f="done" style="width:auto" ${d.done?'checked':''}> Proje tamamlandı</label>
     </div></fieldset>
-    ${!isNew?(modal.confirm?`<div class="confirm"><b>Bu proje ve içindeki ${S.items.length} kayıt kalıcı olarak silinsin mi?</b><div class="row"><button class="btn danger solid" data-act="delProject">Evet, sil</button><button class="btn" data-act="cancelDelete">Vazgeç</button></div></div>`:`<div><button class="btn danger sm" data-act="askDelete">Projeyi sil</button></div>`):''}
+    ${!isNew&&isAdmin()?(modal.confirm?`<div class="confirm"><b>Bu proje ve içindeki ${S.items.length} kayıt kalıcı olarak silinsin mi?</b><div class="row"><button class="btn danger solid" data-act="delProject">Evet, sil</button><button class="btn" data-act="cancelDelete">Vazgeç</button></div></div>`:`<div><button class="btn danger sm" data-act="askDelete">Projeyi sil</button></div>`):''}
     </div><div class="sheet-f"><button class="btn" data-act="close">Vazgeç</button><button class="btn primary" data-act="saveProject" ${modal.busy?'disabled':''}>${modal.busy?'Kaydediliyor…':'Kaydet'}</button></div>`;
   } else if(modal.type==='item'){
     const d=modal.data,c=CAT[d.category],isNew=!d.id;const uploading=(d.photos||[]).some(p=>p.pending);
@@ -259,7 +258,7 @@ function renderModal(){
       ${modal.confirm?`<div class="confirm"><b>Bu kayıt ve fotoğrafları kalıcı olarak silinsin mi?</b><div class="row"><button class="btn danger solid" data-act="delItem">Evet, sil</button><button class="btn" data-act="cancelDelete">Vazgeç</button></div></div>`:''}
     </div>
     <div class="sheet-f"><button class="btn danger" data-act="askDelete">Sil</button><span class="grow"></span><button class="btn primary" data-act="editItem">Düzenle</button></div>`;
-  }
+  } else h=userModalHtml();
   L.innerHTML=`<div class="overlay"><div class="sheet" role="dialog" aria-modal="true">${h}</div></div>`;
   const ov=L.querySelector('.overlay');ov.scrollTop=keepScroll;
   ov.addEventListener('click',e=>{if(e.target===ov&&!modal?.busy&&modal.type==='detail'){modal=null;renderModal()}});
@@ -416,4 +415,86 @@ async function exportPdf(){
     }
   }
   save(fileBase()+' - rapor.pdf',pdf.output('blob'));
+}
+
+/* ---------- kullanıcılar (hesapları yalnızca yönetici açar) ---------- */
+S.people={};S.users=[];S.me=null;
+const isAdmin=()=>S.me?.role==='admin';
+async function loadPeople(){
+  const {data,error}=await sb.from('profiles').select('*').order('created_at');
+  if(error){toast('Kullanıcılar okunamadı: '+error.message);return}
+  S.users=data;S.people=Object.fromEntries(data.map(u=>[u.email,u.full_name||u.email]));
+}
+function renderUsers(){
+  if(!isAdmin())return '<p class="muted">Bu sayfa yalnızca yöneticilere açık.</p>';
+  let h=`<div class="phead"><div><div class="eyebrow">Yönetim</div><h1>Kullanıcılar</h1>
+  <p class="muted" style="margin:4px 0 0;max-width:60ch">Siteye yalnızca burada hesabı açılan kişiler girebilir. Yeni kişi ekleyin, şifre sıfırlayın veya hesabı pasif yapın.</p></div>
+  <button class="btn primary" data-act="newUser">+ Kullanıcı ekle</button></div><div class="list" style="margin-top:16px">`;
+  for(const u of S.users){
+    const st=!u.active?['s-none','Pasif']:u.role==='admin'?['s-info','Yönetici']:['s-good','Kullanıcı'];
+    h+=`<div class="item" style="grid-template-columns:1fr auto;cursor:default"><span class="t"><span class="nm">${esc(u.full_name||'(adsız)')}</span>${u.id===S.me.id?' <span class="code muted">(siz)</span>':''}<span class="sub" style="display:block">${esc(u.email)} · ${fmtDate(u.created_at)}</span></span>
+    <span class="row" style="justify-content:flex-end"><span class="status ${st[0]}">${st[1]}</span><button class="btn sm" data-act="editUser" data-id="${esc(u.id)}">Düzenle</button><button class="btn sm" data-act="pwUser" data-id="${esc(u.id)}">Şifre</button>${u.id!==S.me.id?`<button class="btn sm danger" data-act="delUser" data-id="${esc(u.id)}">Sil</button>`:''}</span></div>`;
+  }
+  return h+'</div>';
+}
+const genPw=()=>{const c='abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';let s='';for(const n of crypto.getRandomValues(new Uint32Array(10)))s+=c[n%c.length];return s};
+function userModalHtml(){
+  const d=modal.data||{},busy=modal.busy;
+  const head=t=>`<div class="sheet-h"><h2 class="grow">${t}</h2><button class="btn sm" data-act="close">Kapat</button></div>`;
+  const foot=(act,label)=>`<div class="sheet-f"><button class="btn" data-act="close">Vazgeç</button><button class="btn primary" data-act="${act}" ${busy?'disabled':''}>${busy?'Kaydediliyor…':label}</button></div>`;
+  const pwField=`<label class="f" for="f_password">Şifre (en az 6 karakter)<span class="row" style="flex-wrap:nowrap"><input id="f_password" data-f="password" type="text" autocomplete="off" value="${esc(d.password||'')}"><button class="btn sm" type="button" data-act="genPw">Yeni oluştur</button></span></label>`;
+  if(modal.type==='user'){const isNew=!d.id;
+    return head(isNew?'Yeni kullanıcı':'Kullanıcıyı düzenle')+`<div class="sheet-b"><fieldset><legend>Hesap</legend><div class="fgrid">
+    ${field('full_name','Ad soyad',null,d)}
+    ${isNew?field('email','E-posta *',null,d):`<label class="f">E-posta<input value="${esc(d.email)}" disabled></label>`}
+    <label class="f" for="f_role">Rol<select id="f_role" data-f="role"><option value="user" ${d.role!=='admin'?'selected':''}>Kullanıcı</option><option value="admin" ${d.role==='admin'?'selected':''}>Yönetici</option></select></label>
+    ${isNew?pwField:`<label class="f full" style="flex-direction:row;align-items:center;gap:8px;color:var(--ink)"><input type="checkbox" id="f_active" data-f="active" style="width:auto" ${d.active!==false?'checked':''}> Hesap aktif (pasif hesap giriş yapamaz)</label>`}
+    </div></fieldset>${isNew?'<p class="muted" style="margin:0;font-size:13px">E-posta ve şifreyi kullanıcıya siz iletin. Kullanıcı giriş yaptıktan sonra üstteki “Şifre” ile değiştirebilir.</p>':''}</div>`+foot('saveUser',isNew?'Hesabı oluştur':'Kaydet');}
+  if(modal.type==='userPw')return head('Şifre sıfırla')+`<div class="sheet-b"><p style="margin:0">${esc(d.full_name||d.email)} için yeni şifre belirleyin.</p>${pwField}</div>`+foot('saveUserPw','Şifreyi kaydet');
+  if(modal.type==='delUser')return head('Kullanıcıyı sil')+`<div class="sheet-b"><div class="confirm"><b>${esc(d.full_name||d.email)} hesabı kalıcı olarak silinsin mi?</b><span>Bu kişinin girdiği kayıtlar silinmez. Geçici olarak kapatmak için “Düzenle” ile pasif yapabilirsiniz.</span></div></div><div class="sheet-f"><button class="btn" data-act="close">Vazgeç</button><button class="btn danger solid" data-act="doDelUser" ${busy?'disabled':''}>Evet, sil</button></div>`;
+  if(modal.type==='myPw')return head('Şifremi değiştir')+`<div class="sheet-b"><label class="f" for="f_p1">Yeni şifre (en az 6 karakter)<input id="f_p1" data-f="p1" type="password" autocomplete="new-password"></label><label class="f" for="f_p2">Yeni şifre (tekrar)<input id="f_p2" data-f="p2" type="password" autocomplete="new-password"></label></div>`+foot('saveMyPw','Şifreyi değiştir');
+  return '';
+}
+async function callAdmin(body){
+  const {data,error}=await sb.functions.invoke('admin-users',{body});
+  if(error){let m=error.message;try{const j=await error.context.json();m=j.error||j.message||m}catch{}throw new Error(m)}
+  if(data?.error)throw new Error(data.error);return data;
+}
+async function runAdmin(body,msg){
+  modal.busy=true;renderModal();
+  try{await callAdmin(body);modal=null;renderModal();await loadPeople();render();toast(msg)}
+  catch(e){modal.busy=false;renderModal();toast(e.message)}
+}
+function saveUser(){const d=modal.data;
+  if(!d.id){
+    if(!/^\S+@\S+\.\S+$/.test(String(d.email||'').trim())){toast('Geçerli bir e-posta girin.');return}
+    if(String(d.password||'').length<6){toast('Şifre en az 6 karakter olmalı.');return}
+    runAdmin({action:'create',email:d.email,password:d.password,full_name:d.full_name||'',role:d.role},'Hesap oluşturuldu. E-posta ve şifreyi kullanıcıya iletin.');
+  } else runAdmin({action:'update',id:d.id,full_name:d.full_name||'',role:d.role,active:d.active!==false},'Kullanıcı güncellendi.');
+}
+async function saveMyPw(){const d=modal.data;
+  if(String(d.p1||'').length<6){toast('Şifre en az 6 karakter olmalı.');return}
+  if(d.p1!==d.p2){toast('Şifreler aynı değil.');return}
+  modal.busy=true;renderModal();
+  const {error}=await sb.auth.updateUser({password:d.p1});
+  if(error){modal.busy=false;renderModal();toast('Şifre değiştirilemedi: '+error.message);return}
+  modal=null;renderModal();toast('Şifreniz değiştirildi.');
+}
+function userAct(act,id){
+  const u=S.users.find(x=>x.id===id);
+  switch(act){
+    case 'users':S.view='users';modal=null;renderModal();render();window.scrollTo(0,0);return false;
+    case 'newUser':modal={type:'user',data:{role:'user',password:genPw()}};return true;
+    case 'editUser':modal={type:'user',data:{...u}};return true;
+    case 'pwUser':modal={type:'userPw',data:{...u,password:genPw()}};return true;
+    case 'delUser':modal={type:'delUser',data:{...u}};return true;
+    case 'myPw':modal={type:'myPw',data:{}};return true;
+    case 'genPw':if(modal?.data)modal.data.password=genPw();return true;
+    case 'saveUser':saveUser();return false;
+    case 'saveUserPw':if(String(modal.data.password||'').length<6){toast('Şifre en az 6 karakter olmalı.');return false}
+      runAdmin({action:'password',id:modal.data.id,password:modal.data.password},'Şifre güncellendi. Yeni şifreyi kullanıcıya iletin.');return false;
+    case 'doDelUser':runAdmin({action:'delete',id:modal.data.id},'Kullanıcı silindi.');return false;
+    case 'saveMyPw':saveMyPw();return false;
+  }
+  return false;
 }
