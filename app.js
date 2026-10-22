@@ -29,7 +29,7 @@ function getCfg(){
   return url&&key?{url,key}:null;
 }
 let sb=null, session=null;
-const S={view:'projects',projects:[],counts:{},pid:null,items:[],cat:'kamera',q:'',status:'',deck:'',loaded:false};
+const S={view:'home',projects:[],counts:{},pid:null,items:[],cat:'kamera',q:'',status:'',deck:'',loaded:false};
 let modal=null, channel=null, reloadTimer=null;
 const proj=()=>S.projects.find(p=>p.id===S.pid);
 const photoUrl=p=>p.preview||sb.storage.from('photos').getPublicUrl(p.path).data.publicUrl;
@@ -53,7 +53,7 @@ function renderSetup(libFail){
   $('#cfgSave').onclick=()=>{try{localStorage.setItem('gbk_cfg',JSON.stringify({url:$('#cfgUrl').value.trim(),key:$('#cfgKey').value.trim()}))}catch{}location.reload()};
 }
 function renderLogin(msg){
-  $('#settingsBtn').hidden=true;S.me=null;$('#userBar').textContent='';$('#backBtn').hidden=true;modal=null;renderModal();
+  $('#settingsBtn').hidden=true;$('#navBtn').hidden=true;S.me=null;$('#userBar').textContent='';$('#backBtn').hidden=true;modal=null;renderModal();
   $('header.app').hidden=true;
   $('#app').innerHTML=`<form id="loginForm" style="max-width:320px;margin:22vh auto 0;display:flex;flex-direction:column;gap:12px">
   ${msg?`<div class="banner">${esc(msg)}</div>`:''}
@@ -70,7 +70,7 @@ async function start(){
   const {data:me}=await sb.from('profiles').select('*').eq('id',session.user.id).maybeSingle();
   if(!me||!me.active){await sb.auth.signOut();renderLogin('Bu hesap kullanıma kapalı. Yöneticinizle görüşün.');return}
   S.me=me;$('header.app').hidden=false;await loadPeople();
-  $('#settingsBtn').hidden=false;$('#userBar').textContent=me.full_name||me.username||'';
+  $('#settingsBtn').hidden=false;$('#navBtn').hidden=false;$('#userBar').textContent=me.full_name||me.username||'';
   await loadProjects();
   if(channel)sb.removeChannel(channel);
   channel=sb.channel('db').on('postgres_changes',{event:'*',schema:'public',table:'projects'},queueReload)
@@ -106,10 +106,10 @@ $('#backBtn').onclick=leaveProject;
 function render(){
   if(!session)return;
   const app=$('#app');
-  $('#backBtn').hidden=S.view==='projects';
+  $('#backBtn').hidden=S.view!=='project';
   $('#hdrSub').textContent=S.view==='project'&&proj()?(proj().ship||proj().name):'Kamera · kablo · ağ cihazı envanteri';
   let h='';if(S.err)h+=`<div class="banner">${esc(S.err)}</div>`;
-  h+=S.view==='settings'?renderSettings():S.view==='users'?renderUsers():S.view==='projects'?renderProjects():renderProject();
+  h+=S.view==='home'?'':S.view==='settings'?renderSettings():S.view==='users'?renderUsers():S.view==='projects'?renderProjects():renderProject();
   const ae=document.activeElement,aid=ae?.id,pos=ae?.selectionStart;
   app.innerHTML=h;
   if(aid){const el=document.getElementById(aid);if(el){el.focus();try{if(pos!=null)el.setSelectionRange(pos,pos)}catch{}}}
@@ -485,9 +485,12 @@ async function saveMyPw(){const d=modal.data;
 function userAct(act,id){
   const u=S.users.find(x=>x.id===id);
   switch(act){
-    case 'menu':setMenu($('#settingsMenu').hidden);return false;
+    case 'menu':setNav(false);setMenu($('#settingsMenu').hidden);return false;
+    case 'nav':setMenu(false);setNav($('#navMenu').hidden);return false;
+    case 'home':S.view='home';S.pid=null;S.items=[];modal=null;renderModal();render();window.scrollTo(0,0);return false;
+    case 'projects':leaveProject();window.scrollTo(0,0);return false;
     case 'settings':S.view='settings';modal=null;renderModal();render();window.scrollTo(0,0);return false;
-    case 'logout':S.view='projects';sb.auth.signOut();return false;
+    case 'logout':S.view='home';sb.auth.signOut();return false;
     case 'users':S.view='users';modal=null;renderModal();render();window.scrollTo(0,0);return false;
     case 'newUser':modal={type:'user',data:{role:'user',password:genPw()}};return true;
     case 'editUser':modal={type:'user',data:{...u}};return true;
@@ -537,3 +540,24 @@ document.addEventListener('click',e=>{
   if(!e.target.closest('.menu-wrap')||e.target.closest('.menu [data-act]'))setMenu(false);
 },true);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#settingsMenu')?.hidden){setMenu(false);$('#settingsBtn').focus()}});
+
+/* ---------- sol üst menü (üç nokta) ---------- */
+function renderNav(){
+  const ps=S.projects.slice(0,6);
+  $('#navMenu').innerHTML=`<button role="menuitem" data-act="home"${S.view==='home'?' aria-current="page"':''}>Ana sayfa</button><hr>
+  <div class="sec">Projeler</div>
+  <button role="menuitem" data-act="projects"${S.view==='projects'?' aria-current="page"':''}>Tüm projeler</button>
+  ${ps.map(p=>`<button role="menuitem" data-act="openProject" data-id="${esc(p.id)}"${S.view==='project'&&S.pid===p.id?' aria-current="page"':''}><span class="pname">${esc(p.name)}</span></button>`).join('')}
+  <button role="menuitem" data-act="newProject">+ Yeni proje</button>`;
+}
+function setNav(open){
+  const m=$('#navMenu');if(!m)return;
+  if(open)renderNav();
+  m.hidden=!open;$('#navBtn').setAttribute('aria-expanded',String(open));
+  if(open)m.querySelector('button')?.focus();
+}
+document.addEventListener('click',e=>{
+  const m=$('#navMenu');if(!m||m.hidden)return;
+  if(!e.target.closest('#navWrap')||e.target.closest('#navMenu [data-act]'))setNav(false);
+},true);
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#navMenu')?.hidden){setNav(false);$('#navBtn').focus()}});

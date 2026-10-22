@@ -140,12 +140,22 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mu
 .menu button{display:flex;width:100%;text-align:left;background:none;border:0;font:inherit;color:inherit;padding:9px 10px;border-radius:6px;cursor:pointer}
 .menu button:hover,.menu button:focus-visible{background:var(--surface2)}
 .menu .danger{color:var(--bad)}
+.menu-left{left:0;right:auto}
+.dots{display:inline-grid;place-items:center;padding:7px}
+.dots svg{width:20px;height:20px;display:block}
+.menu .sec{padding:8px 10px 4px;font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.menu [aria-current="page"]{background:var(--accent-soft);color:var(--accent)}
+.menu .pname{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-left:10px;min-width:0}
 @media (max-width:560px){.userbar{display:none}.hbtn{padding:6px 8px;font-size:13px}}
 
 </style>
 </head>
 <body>
 <header class="app"><div class="wrap">
+  <div class="menu-wrap" id="navWrap">
+    <button class="hbtn dots" id="navBtn" data-act="nav" aria-label="Menü" title="Menü" aria-haspopup="menu" aria-expanded="false" hidden><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></button>
+    <div class="menu menu-left" id="navMenu" role="menu" hidden></div>
+  </div>
   <button class="hbtn" id="backBtn" hidden aria-label="Projelere dön">← Projeler</button>
   <div class="brand grow">Gemi Bileşen Kaydı<small id="hdrSub">Kamera · kablo · ağ cihazı envanteri</small></div>
   <span class="userbar" id="userBar"></span>
@@ -160,6 +170,6 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mu
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="config.js?v=3"></script>
-<script src="app.js?v=7"></script>
+<script src="app.js?v=8"></script>
 </body>
 </html>
