@@ -2,12 +2,14 @@
 
 Kruvaziyer gemi projelerinde kamera, kablo ve diğer bileşenleri farklı açılardan çekilmiş fotoğraflar ve bilgilerle kaydetmek için web uygulaması. Kayıtlar ve fotoğraflar Supabase'de tutulur; Excel, CSV ve PDF rapor alınabilir.
 
-## Kurulum
-1. supabase.com'da bir proje açın.
-2. SQL Editor'de `supabase-setup.sql` dosyasının tamamını çalıştırın.
-3. Project Settings > API sayfasındaki **Project URL** ve **anon public key** değerlerini `config.js` dosyasına yazın.
-4. Authentication > URL Configuration'da **Site URL** olarak GitHub Pages adresini girin (e-posta onay bağlantıları için).
-5. GitHub'da Settings > Pages > Branch: `main` / `(root)` seçip kaydedin.
+## Kullanıcılar
+- Giriş kullanıcı adı ve şifre ile yapılır. Siteden kayıt olunamaz.
+- Hesapları yalnızca yönetici açar: sağ üstteki **Ayarlar → Kullanıcıları yönet**.
+- Herkes kendi şifresini **Ayarlar → Şifremi değiştir** ile değiştirebilir.
 
-## Kullanım
-Siteyi açın, hesap oluşturup giriş yapın. Hesabı olan herkes tüm projeleri görür ve düzenler.
+## Kurulum (yeni bir Supabase projesi için)
+1. SQL Editor'de sırasıyla `supabase-setup.sql`, `supabase-users.sql`, `supabase-username.sql` dosyalarını çalıştırın.
+2. `supabase/functions/admin-users/index.ts` dosyasını `admin-users` adıyla Edge Function olarak yayınlayın.
+3. Authentication > Sign In / Providers'da "Allow new users to sign up" seçeneğini kapatın.
+4. Authentication > Users > Add user ile ilk hesabı açın (Auto Confirm). İlk hesap otomatik olarak yönetici olur.
+5. Project Settings > API'deki Project URL ve anon key değerlerini `config.js` dosyasına yazın.
