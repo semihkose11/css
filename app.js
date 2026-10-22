@@ -54,12 +54,12 @@ function renderSetup(libFail){
 }
 function renderLogin(msg){
   $('#logoutBtn').hidden=true;$('#pwBtn').hidden=true;$('#usersBtn').hidden=true;S.me=null;$('#userBar').textContent='';$('#backBtn').hidden=true;modal=null;renderModal();
-  $('#app').innerHTML=`<form class="auth" id="loginForm"><div class="eyebrow">Giriş</div><h2>Hesabınıza girin</h2>
+  $('header.app').hidden=true;
+  $('#app').innerHTML=`<form id="loginForm" style="max-width:320px;margin:22vh auto 0;display:flex;flex-direction:column;gap:12px">
   ${msg?`<div class="banner">${esc(msg)}</div>`:''}
-  <label class="f" for="lEmail">E-posta<input id="lEmail" type="email" autocomplete="email" required></label>
-  <label class="f" for="lPass">Şifre<input id="lPass" type="password" autocomplete="current-password" minlength="6" required></label>
-  <button class="btn primary" type="submit">Giriş yap</button>
-  <p class="muted" style="margin:0;font-size:13px">Hesabınız yoksa yöneticinizden isteyin.</p></form>`;
+  <input id="lEmail" type="email" autocomplete="email" placeholder="E-posta" aria-label="E-posta" required>
+  <input id="lPass" type="password" autocomplete="current-password" placeholder="Şifre" aria-label="Şifre" required>
+  <button class="btn primary" type="submit" style="justify-content:center">Giriş yap</button></form>`;
   const em=()=>$('#lEmail').value.trim(),pw=()=>$('#lPass').value;
   $('#loginForm').onsubmit=async e=>{e.preventDefault();const {error}=await sb.auth.signInWithPassword({email:em(),password:pw()});if(error)renderLogin(error.message==='Invalid login credentials'?'E-posta veya şifre hatalı.':/banned/i.test(error.message)?'Bu hesap kullanıma kapalı. Yöneticinizle görüşün.':error.message)};
 }
@@ -68,7 +68,7 @@ $('#logoutBtn').onclick=()=>sb.auth.signOut();
 async function start(){
   const {data:me}=await sb.from('profiles').select('*').eq('id',session.user.id).maybeSingle();
   if(!me||!me.active){await sb.auth.signOut();renderLogin('Bu hesap kullanıma kapalı. Yöneticinizle görüşün.');return}
-  S.me=me;await loadPeople();
+  S.me=me;$('header.app').hidden=false;await loadPeople();
   $('#logoutBtn').hidden=false;$('#pwBtn').hidden=false;$('#usersBtn').hidden=!isAdmin();$('#userBar').textContent=me.full_name||session.user.email||'';
   await loadProjects();
   if(channel)sb.removeChannel(channel);
