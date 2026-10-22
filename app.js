@@ -53,7 +53,7 @@ function renderSetup(libFail){
   $('#cfgSave').onclick=()=>{try{localStorage.setItem('gbk_cfg',JSON.stringify({url:$('#cfgUrl').value.trim(),key:$('#cfgKey').value.trim()}))}catch{}location.reload()};
 }
 function renderLogin(msg){
-  $('#logoutBtn').hidden=true;$('#pwBtn').hidden=true;$('#usersBtn').hidden=true;S.me=null;$('#userBar').textContent='';$('#backBtn').hidden=true;modal=null;renderModal();
+  $('#settingsBtn').hidden=true;S.me=null;$('#userBar').textContent='';$('#backBtn').hidden=true;modal=null;renderModal();
   $('header.app').hidden=true;
   $('#app').innerHTML=`<form id="loginForm" style="max-width:320px;margin:22vh auto 0;display:flex;flex-direction:column;gap:12px">
   ${msg?`<div class="banner">${esc(msg)}</div>`:''}
@@ -65,13 +65,12 @@ function renderLogin(msg){
     if(!u.includes('@')){const {data}=await sb.rpc('login_email',{p_username:u});email=data||(u.toLowerCase()+'@kullanici.local')}
     const {error}=await sb.auth.signInWithPassword({email,password:pw()});if(error)renderLogin(error.message==='Invalid login credentials'?'Kullanıcı adı veya şifre hatalı.':/banned/i.test(error.message)?'Bu hesap kullanıma kapalı. Yöneticinizle görüşün.':error.message)};
 }
-$('#logoutBtn').onclick=()=>sb.auth.signOut();
 
 async function start(){
   const {data:me}=await sb.from('profiles').select('*').eq('id',session.user.id).maybeSingle();
   if(!me||!me.active){await sb.auth.signOut();renderLogin('Bu hesap kullanıma kapalı. Yöneticinizle görüşün.');return}
   S.me=me;$('header.app').hidden=false;await loadPeople();
-  $('#logoutBtn').hidden=false;$('#pwBtn').hidden=false;$('#usersBtn').hidden=!isAdmin();$('#userBar').textContent=me.full_name||me.username||'';
+  $('#settingsBtn').hidden=false;$('#userBar').textContent=me.full_name||me.username||'';
   await loadProjects();
   if(channel)sb.removeChannel(channel);
   channel=sb.channel('db').on('postgres_changes',{event:'*',schema:'public',table:'projects'},queueReload)
@@ -110,7 +109,7 @@ function render(){
   $('#backBtn').hidden=S.view==='projects';
   $('#hdrSub').textContent=S.view==='project'&&proj()?(proj().ship||proj().name):'Kamera · kablo · ağ cihazı envanteri';
   let h='';if(S.err)h+=`<div class="banner">${esc(S.err)}</div>`;
-  h+=S.view==='users'?renderUsers():S.view==='projects'?renderProjects():renderProject();
+  h+=S.view==='settings'?renderSettings():S.view==='users'?renderUsers():S.view==='projects'?renderProjects():renderProject();
   const ae=document.activeElement,aid=ae?.id,pos=ae?.selectionStart;
   app.innerHTML=h;
   if(aid){const el=document.getElementById(aid);if(el){el.focus();try{if(pos!=null)el.setSelectionRange(pos,pos)}catch{}}}
@@ -486,6 +485,8 @@ async function saveMyPw(){const d=modal.data;
 function userAct(act,id){
   const u=S.users.find(x=>x.id===id);
   switch(act){
+    case 'settings':S.view='settings';modal=null;renderModal();render();window.scrollTo(0,0);return false;
+    case 'logout':S.view='projects';sb.auth.signOut();return false;
     case 'users':S.view='users';modal=null;renderModal();render();window.scrollTo(0,0);return false;
     case 'newUser':modal={type:'user',data:{role:'user',password:genPw()}};return true;
     case 'editUser':modal={type:'user',data:{...u}};return true;
@@ -500,4 +501,17 @@ function userAct(act,id){
     case 'saveMyPw':saveMyPw();return false;
   }
   return false;
+}
+
+/* ---------- ayarlar ---------- */
+function renderSettings(){
+  const me=S.me||{};
+  const row=(l,v)=>`<div><dt>${esc(l)}</dt><dd>${esc(v||'—')}</dd></div>`;
+  return `<div class="phead"><div><div class="eyebrow">Hesap ve yönetim</div><h1>Ayarlar</h1></div></div>
+  <div style="display:flex;flex-direction:column;gap:14px;margin-top:16px;max-width:720px">
+  <fieldset><legend>Hesabım</legend><dl class="dl">${row('Ad soyad',me.full_name)}${row('Kullanıcı adı',me.username)}${row('Rol',me.role==='admin'?'Yönetici':'Kullanıcı')}</dl>
+  <div class="row" style="margin-top:14px"><button class="btn" data-act="myPw">Şifremi değiştir</button></div></fieldset>
+  ${isAdmin()?`<fieldset><legend>Kullanıcı yönetimi</legend><p class="muted" style="margin:0 0 12px">${S.users.length} hesap, ${S.users.filter(u=>u.active).length} aktif. Yeni kişi ekleyin, şifre sıfırlayın veya hesabı pasif yapın.</p><button class="btn primary" data-act="users">Kullanıcıları yönet</button></fieldset>`:''}
+  <fieldset><legend>Oturum</legend><div class="row"><button class="btn danger" data-act="logout">Çıkış yap</button></div></fieldset>
+  </div>`;
 }
