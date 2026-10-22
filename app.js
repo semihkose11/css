@@ -118,9 +118,9 @@ function countsChips(c){c=c||{};const parts=CATS.filter(k=>c[k.key]).map(k=>`<sp
 function renderProjects(){
   let h=`<div class="phead"><div><div class="eyebrow">Projeler</div><h1>Gemi projeleri</h1>
   <p class="muted" style="margin:4px 0 0;max-width:60ch">Her proje bir gemi ya da iş paketidir. Projeye girip kameraları, kabloları ve diğer bileşenleri ayrı sekmelerde, fotoğraflarıyla kaydedin.</p></div>
-  <button class="btn primary" data-act="newProject">+ Yeni proje</button></div>`;
+  ${isAdmin()?'<button class="btn primary" data-act="newProject">+ Yeni proje</button>':''}</div>`;
   if(!S.loaded)return h+'<p class="muted">Yükleniyor…</p>';
-  if(!S.projects.length)return h+`<div class="empty"><h3>Henüz proje yok</h3><p>“Yeni proje” ile ilk gemi projesini oluşturun. Örneğin: gemi adı, tersane ve başlangıç tarihi.</p></div>`;
+  if(!S.projects.length)return h+`<div class="empty"><h3>Henüz proje yok</h3><p>${isAdmin()?'“Yeni proje” ile ilk gemi projesini oluşturun. Örneğin: gemi adı, tersane ve başlangıç tarihi.':'Yönetici bir proje açtığında burada görünecek.'}</p></div>`;
   h+='<div class="pgrid">';
   for(const p of S.projects){const c=S.counts[p.id]||{};const total=Object.values(c).reduce((a,b)=>a+b,0);
     h+=`<button class="pcard" data-act="openProject" data-id="${esc(p.id)}"><div><div class="ship">${esc(p.ship||'Gemi adı yok')}</div><h2>${esc(p.name)}</h2></div>
@@ -137,8 +137,8 @@ function renderProject(){
   const counts={};for(const i of S.items)counts[i.category]=(counts[i.category]||0)+1;
   const cat=CAT[S.cat];
   let h=`<div class="phead"><div style="min-width:0"><div class="eyebrow">${esc(p.ship||'Proje')}</div><h1>${esc(p.name)}</h1>
-   <div class="meta">${p.client?`<span>Firma: <b>${esc(p.client)}</b></span>`:''}${p.port?`<span>Liman/tersane: <b>${esc(p.port)}</b></span>`:''}${p.start?`<span>Başlangıç: <b>${fmtDate(p.start)}</b></span>`:''}<span>Toplam: <b>${S.items.length}</b> kayıt</span></div></div>
-   <div class="row"><button class="btn sm" data-act="editProject">Proje bilgileri</button><button class="btn sm" data-act="exportXlsx">Excel</button><button class="btn sm" data-act="exportCsv">CSV</button><button class="btn sm" data-act="exportPdf">PDF rapor</button></div></div>
+   <div class="meta">${p.client?`<span>Firma: <b>${esc(p.client)}</b></span>`:''}${p.port?`<span>Liman/tersane: <b>${esc(p.port)}</b></span>`:''}${p.start?`<span>Başlangıç: <b>${fmtDate(p.start)}</b></span>`:''}<span>${isAdmin()?'Toplam':'Sizin kayıtlarınız'}: <b>${S.items.length}</b> kayıt</span></div></div>
+   <div class="row">${isAdmin()?'<button class="btn sm" data-act="editProject">Proje bilgileri</button>':''}<button class="btn sm" data-act="exportXlsx">Excel</button><button class="btn sm" data-act="exportCsv">CSV</button><button class="btn sm" data-act="exportPdf">PDF rapor</button></div></div>
    ${p.note?`<p class="muted" style="margin:10px 0 0;max-width:70ch;white-space:pre-wrap">${esc(p.note)}</p>`:''}
    <div class="tabs" role="tablist">${CATS.map(c=>`<button class="tab" role="tab" aria-selected="${c.key===S.cat}" data-act="tab" data-id="${c.key}">${esc(c.label)}<span class="n">${counts[c.key]||0}</span></button>`).join('')}</div>`;
   const decks=[...new Set(S.items.filter(i=>i.category===S.cat&&i.deck).map(i=>String(i.deck)))].sort((a,b)=>a.localeCompare(b,'tr',{numeric:true}));
@@ -167,8 +167,8 @@ function renderProject(){
 document.addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b)return;const id=b.dataset.id;
   switch(b.dataset.act){
-    case 'newProject':modal={type:'project',data:{}};break;
-    case 'editProject':modal={type:'project',data:{...proj()}};break;
+    case 'newProject':if(!isAdmin())return;modal={type:'project',data:{}};break;
+    case 'editProject':if(!isAdmin())return;modal={type:'project',data:{...proj()}};break;
     case 'openProject':openProject(id);return;
     case 'tab':S.cat=id;S.status='';S.deck='';render();return;
     case 'newItem':modal={type:'item',data:{category:S.cat,photos:[]}};break;
@@ -548,7 +548,7 @@ function renderNav(){
   <div class="sec">Projeler</div>
   <button role="menuitem" data-act="projects"${S.view==='projects'?' aria-current="page"':''}>Tüm projeler</button>
   ${ps.map(p=>`<button role="menuitem" data-act="openProject" data-id="${esc(p.id)}"${S.view==='project'&&S.pid===p.id?' aria-current="page"':''}><span class="pname">${esc(p.name)}</span></button>`).join('')}
-  <button role="menuitem" data-act="newProject">+ Yeni proje</button>`;
+  ${isAdmin()?'<button role="menuitem" data-act="newProject">+ Yeni proje</button>':''}`;
 }
 function setNav(open){
   const m=$('#navMenu');if(!m)return;
