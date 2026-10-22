@@ -57,11 +57,13 @@ function renderLogin(msg){
   $('header.app').hidden=true;
   $('#app').innerHTML=`<form id="loginForm" style="max-width:320px;margin:22vh auto 0;display:flex;flex-direction:column;gap:12px">
   ${msg?`<div class="banner">${esc(msg)}</div>`:''}
-  <input id="lEmail" type="email" autocomplete="email" placeholder="E-posta" aria-label="E-posta" required>
+  <input id="lEmail" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Kullanıcı adı" aria-label="Kullanıcı adı" required>
   <input id="lPass" type="password" autocomplete="current-password" placeholder="Şifre" aria-label="Şifre" required>
   <button class="btn primary" type="submit" style="justify-content:center">Giriş yap</button></form>`;
   const em=()=>$('#lEmail').value.trim(),pw=()=>$('#lPass').value;
-  $('#loginForm').onsubmit=async e=>{e.preventDefault();const {error}=await sb.auth.signInWithPassword({email:em(),password:pw()});if(error)renderLogin(error.message==='Invalid login credentials'?'E-posta veya şifre hatalı.':/banned/i.test(error.message)?'Bu hesap kullanıma kapalı. Yöneticinizle görüşün.':error.message)};
+  $('#loginForm').onsubmit=async e=>{e.preventDefault();const u=em();let email=u;
+    if(!u.includes('@')){const {data}=await sb.rpc('login_email',{p_username:u});email=data||(u.toLowerCase()+'@kullanici.local')}
+    const {error}=await sb.auth.signInWithPassword({email,password:pw()});if(error)renderLogin(error.message==='Invalid login credentials'?'Kullanıcı adı veya şifre hatalı.':/banned/i.test(error.message)?'Bu hesap kullanıma kapalı. Yöneticinizle görüşün.':error.message)};
 }
 $('#logoutBtn').onclick=()=>sb.auth.signOut();
 
@@ -69,7 +71,7 @@ async function start(){
   const {data:me}=await sb.from('profiles').select('*').eq('id',session.user.id).maybeSingle();
   if(!me||!me.active){await sb.auth.signOut();renderLogin('Bu hesap kullanıma kapalı. Yöneticinizle görüşün.');return}
   S.me=me;$('header.app').hidden=false;await loadPeople();
-  $('#logoutBtn').hidden=false;$('#pwBtn').hidden=false;$('#usersBtn').hidden=!isAdmin();$('#userBar').textContent=me.full_name||session.user.email||'';
+  $('#logoutBtn').hidden=false;$('#pwBtn').hidden=false;$('#usersBtn').hidden=!isAdmin();$('#userBar').textContent=me.full_name||me.username||'';
   await loadProjects();
   if(channel)sb.removeChannel(channel);
   channel=sb.channel('db').on('postgres_changes',{event:'*',schema:'public',table:'projects'},queueReload)
@@ -423,7 +425,7 @@ const isAdmin=()=>S.me?.role==='admin';
 async function loadPeople(){
   const {data,error}=await sb.from('profiles').select('*').order('created_at');
   if(error){toast('Kullanıcılar okunamadı: '+error.message);return}
-  S.users=data;S.people=Object.fromEntries(data.map(u=>[u.email,u.full_name||u.email]));
+  S.users=data;S.people=Object.fromEntries(data.map(u=>[u.email,u.full_name||u.username||u.email]));
 }
 function renderUsers(){
   if(!isAdmin())return '<p class="muted">Bu sayfa yalnızca yöneticilere açık.</p>';
@@ -432,7 +434,7 @@ function renderUsers(){
   <button class="btn primary" data-act="newUser">+ Kullanıcı ekle</button></div><div class="list" style="margin-top:16px">`;
   for(const u of S.users){
     const st=!u.active?['s-none','Pasif']:u.role==='admin'?['s-info','Yönetici']:['s-good','Kullanıcı'];
-    h+=`<div class="item" style="grid-template-columns:1fr auto;cursor:default"><span class="t"><span class="nm">${esc(u.full_name||'(adsız)')}</span>${u.id===S.me.id?' <span class="code muted">(siz)</span>':''}<span class="sub" style="display:block">${esc(u.email)} · ${fmtDate(u.created_at)}</span></span>
+    h+=`<div class="item" style="grid-template-columns:1fr auto;cursor:default"><span class="t"><span class="nm">${esc(u.full_name||'(adsız)')}</span>${u.id===S.me.id?' <span class="code muted">(siz)</span>':''}<span class="sub" style="display:block">${esc(u.username||u.email)} · ${fmtDate(u.created_at)}</span></span>
     <span class="row" style="justify-content:flex-end"><span class="status ${st[0]}">${st[1]}</span><button class="btn sm" data-act="editUser" data-id="${esc(u.id)}">Düzenle</button><button class="btn sm" data-act="pwUser" data-id="${esc(u.id)}">Şifre</button>${u.id!==S.me.id?`<button class="btn sm danger" data-act="delUser" data-id="${esc(u.id)}">Sil</button>`:''}</span></div>`;
   }
   return h+'</div>';
@@ -446,12 +448,12 @@ function userModalHtml(){
   if(modal.type==='user'){const isNew=!d.id;
     return head(isNew?'Yeni kullanıcı':'Kullanıcıyı düzenle')+`<div class="sheet-b"><fieldset><legend>Hesap</legend><div class="fgrid">
     ${field('full_name','Ad soyad',null,d)}
-    ${isNew?field('email','E-posta *',null,d):`<label class="f">E-posta<input value="${esc(d.email)}" disabled></label>`}
+    ${isNew?field('username','Kullanıcı adı *',null,d):`<label class="f">Kullanıcı adı<input value="${esc(d.username||d.email)}" disabled></label>`}
     <label class="f" for="f_role">Rol<select id="f_role" data-f="role"><option value="user" ${d.role!=='admin'?'selected':''}>Kullanıcı</option><option value="admin" ${d.role==='admin'?'selected':''}>Yönetici</option></select></label>
     ${isNew?pwField:`<label class="f full" style="flex-direction:row;align-items:center;gap:8px;color:var(--ink)"><input type="checkbox" id="f_active" data-f="active" style="width:auto" ${d.active!==false?'checked':''}> Hesap aktif (pasif hesap giriş yapamaz)</label>`}
-    </div></fieldset>${isNew?'<p class="muted" style="margin:0;font-size:13px">E-posta ve şifreyi kullanıcıya siz iletin. Kullanıcı giriş yaptıktan sonra üstteki “Şifre” ile değiştirebilir.</p>':''}</div>`+foot('saveUser',isNew?'Hesabı oluştur':'Kaydet');}
-  if(modal.type==='userPw')return head('Şifre sıfırla')+`<div class="sheet-b"><p style="margin:0">${esc(d.full_name||d.email)} için yeni şifre belirleyin.</p>${pwField}</div>`+foot('saveUserPw','Şifreyi kaydet');
-  if(modal.type==='delUser')return head('Kullanıcıyı sil')+`<div class="sheet-b"><div class="confirm"><b>${esc(d.full_name||d.email)} hesabı kalıcı olarak silinsin mi?</b><span>Bu kişinin girdiği kayıtlar silinmez. Geçici olarak kapatmak için “Düzenle” ile pasif yapabilirsiniz.</span></div></div><div class="sheet-f"><button class="btn" data-act="close">Vazgeç</button><button class="btn danger solid" data-act="doDelUser" ${busy?'disabled':''}>Evet, sil</button></div>`;
+    </div></fieldset>${isNew?'<p class="muted" style="margin:0;font-size:13px">Kullanıcı adı küçük harf, rakam, nokta, tire veya alt çizgiden oluşur (3–30 karakter). Kullanıcı adını ve şifreyi kişiye siz iletin. Kullanıcı giriş yaptıktan sonra üstteki “Şifre” ile değiştirebilir.</p>':''}</div>`+foot('saveUser',isNew?'Hesabı oluştur':'Kaydet');}
+  if(modal.type==='userPw')return head('Şifre sıfırla')+`<div class="sheet-b"><p style="margin:0">${esc(d.full_name||d.username||d.email)} için yeni şifre belirleyin.</p>${pwField}</div>`+foot('saveUserPw','Şifreyi kaydet');
+  if(modal.type==='delUser')return head('Kullanıcıyı sil')+`<div class="sheet-b"><div class="confirm"><b>${esc(d.full_name||d.username||d.email)} hesabı kalıcı olarak silinsin mi?</b><span>Bu kişinin girdiği kayıtlar silinmez. Geçici olarak kapatmak için “Düzenle” ile pasif yapabilirsiniz.</span></div></div><div class="sheet-f"><button class="btn" data-act="close">Vazgeç</button><button class="btn danger solid" data-act="doDelUser" ${busy?'disabled':''}>Evet, sil</button></div>`;
   if(modal.type==='myPw')return head('Şifremi değiştir')+`<div class="sheet-b"><label class="f" for="f_p1">Yeni şifre (en az 6 karakter)<input id="f_p1" data-f="p1" type="password" autocomplete="new-password"></label><label class="f" for="f_p2">Yeni şifre (tekrar)<input id="f_p2" data-f="p2" type="password" autocomplete="new-password"></label></div>`+foot('saveMyPw','Şifreyi değiştir');
   return '';
 }
@@ -467,9 +469,10 @@ async function runAdmin(body,msg){
 }
 function saveUser(){const d=modal.data;
   if(!d.id){
-    if(!/^\S+@\S+\.\S+$/.test(String(d.email||'').trim())){toast('Geçerli bir e-posta girin.');return}
+    d.username=String(d.username||'').trim().toLowerCase();
+    if(!/^[a-z0-9._-]{3,30}$/.test(d.username)){toast('Kullanıcı adı 3–30 karakter olmalı; sadece küçük harf, rakam, nokta, tire ve alt çizgi kullanın.');return}
     if(String(d.password||'').length<6){toast('Şifre en az 6 karakter olmalı.');return}
-    runAdmin({action:'create',email:d.email,password:d.password,full_name:d.full_name||'',role:d.role},'Hesap oluşturuldu. E-posta ve şifreyi kullanıcıya iletin.');
+    runAdmin({action:'create',username:d.username,password:d.password,full_name:d.full_name||'',role:d.role},'Hesap oluşturuldu. Kullanıcı adını ve şifreyi kişiye iletin.');
   } else runAdmin({action:'update',id:d.id,full_name:d.full_name||'',role:d.role,active:d.active!==false},'Kullanıcı güncellendi.');
 }
 async function saveMyPw(){const d=modal.data;
