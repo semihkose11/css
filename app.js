@@ -485,6 +485,7 @@ async function saveMyPw(){const d=modal.data;
 function userAct(act,id){
   const u=S.users.find(x=>x.id===id);
   switch(act){
+    case 'menu':setMenu($('#settingsMenu').hidden);return false;
     case 'settings':S.view='settings';modal=null;renderModal();render();window.scrollTo(0,0);return false;
     case 'logout':S.view='projects';sb.auth.signOut();return false;
     case 'users':S.view='users';modal=null;renderModal();render();window.scrollTo(0,0);return false;
@@ -515,3 +516,24 @@ function renderSettings(){
   <fieldset><legend>Oturum</legend><div class="row"><button class="btn danger" data-act="logout">Çıkış yap</button></div></fieldset>
   </div>`;
 }
+
+/* ---------- dişli menüsü ---------- */
+function renderMenu(){
+  const me=S.me||{};
+  $('#settingsMenu').innerHTML=`<div class="who"><b>${esc(me.full_name||me.username||'')}</b><div class="muted">${esc(me.username||'')} · ${me.role==='admin'?'Yönetici':'Kullanıcı'}</div></div><hr>
+  <button role="menuitem" data-act="settings">Hesabım</button>
+  <button role="menuitem" data-act="myPw">Şifremi değiştir</button>
+  ${isAdmin()?'<button role="menuitem" data-act="users">Kullanıcıları yönet</button>':''}<hr>
+  <button role="menuitem" class="danger" data-act="logout">Çıkış yap</button>`;
+}
+function setMenu(open){
+  const m=$('#settingsMenu');if(!m)return;
+  if(open)renderMenu();
+  m.hidden=!open;$('#settingsBtn').setAttribute('aria-expanded',String(open));
+  if(open)m.querySelector('button')?.focus();
+}
+document.addEventListener('click',e=>{
+  const m=$('#settingsMenu');if(!m||m.hidden)return;
+  if(!e.target.closest('.menu-wrap')||e.target.closest('.menu [data-act]'))setMenu(false);
+},true);
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#settingsMenu')?.hidden){setMenu(false);$('#settingsBtn').focus()}});

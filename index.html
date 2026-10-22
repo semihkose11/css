@@ -128,6 +128,18 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mu
 
 .auth{max-width:420px;margin:40px auto;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:24px;display:flex;flex-direction:column;gap:14px}
 .userbar{font-family:var(--f-mono);font-size:12px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40vw}
+.menu-wrap{position:relative;flex:none}
+.gear{display:inline-grid;place-items:center;padding:7px}
+.gear svg{width:20px;height:20px;display:block}
+.gear[aria-expanded="true"] svg{transform:rotate(60deg)}
+@media (prefers-reduced-motion:no-preference){.gear svg{transition:transform .25s}}
+.menu{position:absolute;right:0;top:calc(100% + 8px);min-width:230px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:10px;box-shadow:0 14px 36px rgba(0,0,0,.2);padding:6px;z-index:15}
+.menu .who{padding:8px 10px 10px;font-size:13px;line-height:1.35}
+.menu .who b{font-size:14px}
+.menu hr{border:0;border-top:1px solid var(--line);margin:4px 0}
+.menu button{display:flex;width:100%;text-align:left;background:none;border:0;font:inherit;color:inherit;padding:9px 10px;border-radius:6px;cursor:pointer}
+.menu button:hover,.menu button:focus-visible{background:var(--surface2)}
+.menu .danger{color:var(--bad)}
 @media (max-width:560px){.userbar{display:none}.hbtn{padding:6px 8px;font-size:13px}}
 
 </style>
@@ -137,7 +149,10 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mu
   <button class="hbtn" id="backBtn" hidden aria-label="Projelere dön">← Projeler</button>
   <div class="brand grow">Gemi Bileşen Kaydı<small id="hdrSub">Kamera · kablo · ağ cihazı envanteri</small></div>
   <span class="userbar" id="userBar"></span>
-  <button class="hbtn" id="settingsBtn" data-act="settings" hidden>Ayarlar</button>
+  <div class="menu-wrap">
+    <button class="hbtn gear" id="settingsBtn" data-act="menu" aria-label="Ayarlar" title="Ayarlar" aria-haspopup="menu" aria-expanded="false" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+    <div class="menu" id="settingsMenu" role="menu" hidden></div>
+  </div>
 </div></header>
 <main class="wrap" id="app"><p class="muted">Yükleniyor…</p></main>
 <div id="layer"></div>
@@ -145,6 +160,6 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mu
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="config.js?v=3"></script>
-<script src="app.js?v=6"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>
