@@ -12,7 +12,7 @@ html{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!i
 
 /* Layout: sticky ship-bridge header, project list → project with category tabs → item sheets. Tokens below. */
 :root{
-  --bg:#eef2f4; --surface:#ffffff; --surface2:#f6f8f9; --ink:#0f2433; --muted:#5a6d7a; --line:#d5dee3;
+  --bg:#ffffff; --surface:#ffffff; --surface2:#f6f8f9; --ink:#0f2433; --muted:#5a6d7a; --line:#d5dee3;
   --accent:#0b6e8a; --accent-ink:#ffffff; --accent-soft:#dcedf2;
   --good:#1f7a4d; --good-soft:#dff1e7; --warn:#a6620a; --warn-soft:#fbeed8; --bad:#b3261e; --bad-soft:#f9e0de; --info:#3f5aa8; --info-soft:#e3e8f7;
   --hdr:#0f2433; --hdr-ink:#e9f1f5;
@@ -21,16 +21,6 @@ html{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!i
   --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
   --r:10px;
 }
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#0b1820; --surface:#12232e; --surface2:#172b37; --ink:#e3edf2; --muted:#93a8b5; --line:#24404f;
-  --accent:#4cb6d4; --accent-ink:#06202a; --accent-soft:#163847;
-  --good:#5cc993; --good-soft:#123528; --warn:#e9a64a; --warn-soft:#3a2a12; --bad:#f08a82; --bad-soft:#3d1b19; --info:#93a9f0; --info-soft:#1c2647;
-  --hdr:#07131a; --hdr-ink:#e3edf2; color-scheme:dark}}
-:root[data-theme="dark"]{
-  --bg:#0b1820; --surface:#12232e; --surface2:#172b37; --ink:#e3edf2; --muted:#93a8b5; --line:#24404f;
-  --accent:#4cb6d4; --accent-ink:#06202a; --accent-soft:#163847;
-  --good:#5cc993; --good-soft:#123528; --warn:#e9a64a; --warn-soft:#3a2a12; --bad:#f08a82; --bad-soft:#3d1b19; --info:#93a9f0; --info-soft:#1c2647;
-  --hdr:#07131a; --hdr-ink:#e3edf2; color-scheme:dark}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--hdr)}
@@ -170,6 +160,6 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mu
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="config.js?v=3"></script>
-<script src="app.js?v=9"></script>
+<script src="app.js?v=10"></script>
 </body>
 </html>
