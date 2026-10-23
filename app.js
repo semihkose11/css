@@ -17,9 +17,9 @@ const DATA_KEYS=[...new Set([...COMMON,...LOC,...CATS.flatMap(c=>c.fields)].map(
 
 const $=s=>document.querySelector(s);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const fmtDate=t=>t?new Date(t).toLocaleDateString('tr-TR',{day:'2-digit',month:'short',year:'numeric'}):'';
-const fmtDT=t=>t?new Date(t).toLocaleString('tr-TR',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
-function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2800)}
+const fmtDate=t=>t?new Date(t).toLocaleDateString(LOCALE,{day:'2-digit',month:'short',year:'numeric'}):'';
+const fmtDT=t=>t?new Date(t).toLocaleString(LOCALE,{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=T(m);document.body.appendChild(t);setTimeout(()=>t.remove(),2800)}
 const who=e=>e?(S.people&&S.people[e])||e:'—';
 
 /* ---------- config ---------- */
@@ -338,8 +338,8 @@ async function deleteProject(){
 /* ---------- exports ---------- */
 function rowsFor(items,c){
   const head=['Kategori',...COMMON.map(x=>x[1]),...c.fields.map(x=>x[1]),...LOC.map(x=>x[1]),'Durum','Kontrol / montaj tarihi','Teknisyen','Not','Fotoğraf sayısı','Fotoğraf açıları','Fotoğraf bağlantıları','Kaydeden','Kayıt tarihi','Son güncelleme'];
-  const rows=items.map(i=>[c.one,...COMMON.map(([k])=>i[k]||''),...c.fields.map(([k])=>i[k]||''),...LOC.map(([k])=>i[k]||''),ST[i.status]?.[1]||'',i.date||'',i.tech||'',i.note||'',(i.photos||[]).length,(i.photos||[]).map(p=>p.angle).join(', '),(i.photos||[]).map(p=>photoUrl(p)).join(' '),who(i.createdBy),fmtDT(i.createdAt),fmtDT(i.updatedAt)]);
-  return [head,...rows];
+  const rows=items.map(i=>[c.one,...COMMON.map(([k])=>i[k]||''),...c.fields.map(([k])=>i[k]||''),...LOC.map(([k])=>i[k]||''),ST[i.status]?.[1]||'',i.date||'',i.tech||'',i.note||'',(i.photos||[]).length,(i.photos||[]).map(p=>T(p.angle)).join(', '),(i.photos||[]).map(p=>photoUrl(p)).join(' '),who(i.createdBy),fmtDT(i.createdAt),fmtDT(i.updatedAt)]);
+  return [head.map(T),...rows.map(r=>r.map(v=>typeof v==='string'?T(v):v))];
 }
 const fileBase=()=>{const p=proj();return ((p.ship?p.ship+' - ':'')+p.name).replace(/[\\/:*?"<>|]/g,'-')};
 function save(filename,data,type){
@@ -359,9 +359,9 @@ function exportXlsx(){
   const wb=XLSX.utils.book_new();let n=0;const p=proj();
   const sum=[['Proje',p.name],['Gemi',p.ship||''],['Firma',p.client||''],['Liman / tersane',p.port||''],['Başlangıç',p.start||''],['Rapor tarihi',fmtDT(Date.now())],[],['Kategori','Kayıt',...STATUS.map(s=>s[1])]];
   for(const c of CATS){const its=S.items.filter(i=>i.category===c.key);sum.push([c.label,its.length,...STATUS.map(s=>its.filter(i=>i.status===s[0]).length)])}
-  const ws0=XLSX.utils.aoa_to_sheet(sum);ws0['!cols']=[{wch:20},{wch:30}];XLSX.utils.book_append_sheet(wb,ws0,'Özet');
+  const ws0=XLSX.utils.aoa_to_sheet(sum.map(r=>r.map(v=>typeof v==='string'?T(v):v)));ws0['!cols']=[{wch:20},{wch:30}];XLSX.utils.book_append_sheet(wb,ws0,T('Özet'));
   for(const c of CATS){const its=S.items.filter(i=>i.category===c.key);if(!its.length)continue;n++;
-    const ws=XLSX.utils.aoa_to_sheet(rowsFor(its,c));ws['!cols']=rowsFor([],c)[0].map(h=>({wch:Math.max(12,h.length+2)}));XLSX.utils.book_append_sheet(wb,ws,c.label.slice(0,31))}
+    const ws=XLSX.utils.aoa_to_sheet(rowsFor(its,c));ws['!cols']=rowsFor([],c)[0].map(h=>({wch:Math.max(12,h.length+2)}));XLSX.utils.book_append_sheet(wb,ws,T(c.label).slice(0,31))}
   if(!n){toast('Dışa aktarılacak kayıt yok.');return}
   save(fileBase()+'.xlsx',new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
 }
@@ -372,7 +372,7 @@ async function exportPdf(){
   toast('PDF hazırlanıyor…');await document.fonts.ready;
   const W=1240,H=1754,M=80;
   const pdf=new jspdf.jsPDF({unit:'mm',format:'a4',compress:true});let first=true;
-  const cv=document.createElement('canvas');cv.width=W;cv.height=H;const g=cv.getContext('2d');
+  const cv=document.createElement('canvas');cv.width=W;cv.height=H;const g=cv.getContext('2d');const _ft=g.fillText.bind(g),_mt=g.measureText.bind(g);g.fillText=(t,...a)=>_ft(T(String(t)),...a);g.measureText=t=>_mt(T(String(t)));
   const F=(w,s,f='IBM Plex Sans')=>`${w} ${s}px "${f}", sans-serif`;
   const p=proj();let pageNo=0;
   const newPage=()=>{g.fillStyle='#fff';g.fillRect(0,0,W,H);pageNo++;g.fillStyle='#0f2433';g.fillRect(0,0,W,14);
@@ -393,7 +393,7 @@ async function exportPdf(){
   for(const c of CATS){
     for(const i of S.items.filter(x=>x.category===c.key)){
       newPage();y=110;
-      g.fillStyle='#0b6e8a';g.font=F(500,20,'IBM Plex Mono');g.fillText((c.one+(i.code?' · '+i.code:'')).toLocaleUpperCase('tr'),M,y);y+=56;
+      g.fillStyle='#0b6e8a';g.font=F(500,20,'IBM Plex Mono');g.fillText((T(c.one)+(i.code?' · '+i.code:'')).toLocaleUpperCase(LANG==='en'?'en':'tr'),M,y);y+=56;
       g.fillStyle='#0f2433';g.font=F(700,46,'Barlow Condensed');y=wrap(i.name||'(adsız)',M,y,W-2*M-260,52);
       const st=ST[i.status];if(st){const col={good:['#dff1e7','#1f7a4d'],warn:['#fbeed8','#a6620a'],bad:['#f9e0de','#b3261e'],info:['#e3e8f7','#3f5aa8']}[st[2]];g.font=F(600,22);const tw=g.measureText(st[1]).width+36;g.fillStyle=col[0];g.beginPath();g.roundRect?g.roundRect(W-M-tw,110,tw,44,22):g.rect(W-M-tw,110,tw,44);g.fill();g.fillStyle=col[1];g.fillText(st[1],W-M-tw+18,140)}
       y+=10;
@@ -414,7 +414,7 @@ async function exportPdf(){
       flush();
     }
   }
-  save(fileBase()+' - rapor.pdf',pdf.output('blob'));
+  save(fileBase()+T(' - rapor.pdf'),pdf.output('blob'));
 }
 
 /* ---------- kullanıcılar (hesapları yalnızca yönetici açar) ---------- */
@@ -489,6 +489,7 @@ function userAct(act,id){
     case 'home':S.view='home';S.pid=null;S.items=[];modal=null;renderModal();render();window.scrollTo(0,0);return false;
     case 'projects':leaveProject();window.scrollTo(0,0);return false;
     case 'theme':{const d=!isDark();if(d)document.documentElement.dataset.theme='dark';else delete document.documentElement.dataset.theme;try{localStorage.setItem('gbk_theme',d?'dark':'light')}catch{}render();return false;}
+    case 'lang':if(id!==LANG){try{localStorage.setItem('gbk_lang',id)}catch{}location.reload()}return false;
     case 'settings':S.view='settings';modal=null;renderModal();render();window.scrollTo(0,0);return false;
     case 'logout':S.view='home';sb.auth.signOut();return false;
     case 'users':S.view='users';modal=null;renderModal();render();window.scrollTo(0,0);return false;
@@ -517,6 +518,7 @@ function renderSettings(){
   <div class="row" style="margin-top:14px"><button class="btn" data-act="myPw">Şifremi değiştir</button></div></fieldset>
   ${isAdmin()?`<fieldset><legend>Kullanıcı yönetimi</legend><p class="muted" style="margin:0 0 12px">${S.users.length} hesap, ${S.users.filter(u=>u.active).length} aktif. Yeni kişi ekleyin, şifre sıfırlayın veya hesabı pasif yapın.</p><button class="btn primary" data-act="users">Kullanıcıları yönet</button></fieldset>`:''}
   <fieldset><legend>Görünüm</legend><div class="row"><span>Tema: <b>${isDark()?'Koyu':'Açık'}</b></span><button class="btn" data-act="theme">${isDark()?'Açık temaya geç':'Koyu temaya geç'}</button></div></fieldset>
+  <fieldset><legend>Dil</legend><div class="row"><button class="btn ${LANG==='en'?'primary':''}" data-act="lang" data-id="en">English</button><button class="btn ${LANG==='tr'?'primary':''}" data-act="lang" data-id="tr">Türkçe</button></div></fieldset>
   <fieldset><legend>Oturum</legend><div class="row"><button class="btn danger" data-act="logout">Çıkış yap</button></div></fieldset>
   </div>`;
 }
