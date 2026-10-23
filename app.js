@@ -489,6 +489,7 @@ function userAct(act,id){
     case 'nav':setMenu(false);setNav($('#navMenu').hidden);return false;
     case 'home':S.view='home';S.pid=null;S.items=[];modal=null;renderModal();render();window.scrollTo(0,0);return false;
     case 'projects':leaveProject();window.scrollTo(0,0);return false;
+    case 'theme':{const d=!isDark();if(d)document.documentElement.dataset.theme='dark';else delete document.documentElement.dataset.theme;try{localStorage.setItem('gbk_theme',d?'dark':'light')}catch{}render();return false;}
     case 'settings':S.view='settings';modal=null;renderModal();render();window.scrollTo(0,0);return false;
     case 'logout':S.view='home';sb.auth.signOut();return false;
     case 'users':S.view='users';modal=null;renderModal();render();window.scrollTo(0,0);return false;
@@ -516,6 +517,7 @@ function renderSettings(){
   <fieldset><legend>Hesabım</legend><dl class="dl">${row('Ad soyad',me.full_name)}${row('Kullanıcı adı',me.username)}${row('Rol',me.role==='admin'?'Yönetici':'Kullanıcı')}</dl>
   <div class="row" style="margin-top:14px"><button class="btn" data-act="myPw">Şifremi değiştir</button></div></fieldset>
   ${isAdmin()?`<fieldset><legend>Kullanıcı yönetimi</legend><p class="muted" style="margin:0 0 12px">${S.users.length} hesap, ${S.users.filter(u=>u.active).length} aktif. Yeni kişi ekleyin, şifre sıfırlayın veya hesabı pasif yapın.</p><button class="btn primary" data-act="users">Kullanıcıları yönet</button></fieldset>`:''}
+  <fieldset><legend>Görünüm</legend><div class="row"><span>Tema: <b>${isDark()?'Koyu':'Açık'}</b></span><button class="btn" data-act="theme">${isDark()?'Açık temaya geç':'Koyu temaya geç'}</button></div></fieldset>
   <fieldset><legend>Oturum</legend><div class="row"><button class="btn danger" data-act="logout">Çıkış yap</button></div></fieldset>
   </div>`;
 }
@@ -526,6 +528,7 @@ function renderMenu(){
   $('#settingsMenu').innerHTML=`<div class="who"><b>${esc(me.full_name||me.username||'')}</b><div class="muted">${esc(me.username||'')} · ${me.role==='admin'?'Yönetici':'Kullanıcı'}</div></div><hr>
   <button role="menuitem" data-act="settings">Hesabım</button>
   <button role="menuitem" data-act="myPw">Şifremi değiştir</button>
+  <button role="menuitem" data-act="theme">${isDark()?'Açık tema':'Koyu tema'}</button>
   ${isAdmin()?'<button role="menuitem" data-act="users">Kullanıcıları yönet</button>':''}<hr>
   <button role="menuitem" class="danger" data-act="logout">Çıkış yap</button>`;
 }
@@ -561,3 +564,5 @@ document.addEventListener('click',e=>{
   if(!e.target.closest('#navWrap')||e.target.closest('#navMenu [data-act]'))setNav(false);
 },true);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#navMenu')?.hidden){setNav(false);$('#navBtn').focus()}});
+
+const isDark=()=>document.documentElement.dataset.theme==='dark';
