@@ -89,6 +89,10 @@ const DICT={
  'Görünüm':'Appearance','Tema:':'Theme:','Koyu':'Dark','Açık':'Light','Açık temaya geç':'Switch to light theme','Koyu temaya geç':'Switch to dark theme',
  'Açık tema':'Light theme','Koyu tema':'Dark theme','Oturum':'Session','Çıkış yap':'Sign out','Dil':'Language'
 };
+// Kayıtlarda saklanan sabit seçenekler İngilizcedir; Türkçe görünümde bu tabloyla çevrilir.
+const VALS={'Overview':'Genel görünüm','Front':'Ön','Back':'Arka','Left':'Sol','Right':'Sağ','Top':'Üst','Bottom':'Alt','Connection point':'Bağlantı noktası',
+ 'Label / serial no':'Etiket / seri no','Mounting location':'Montaj yeri','Detail':'Detay','Ceiling':'Tavan','Wall':'Duvar','Pole':'Direk','Recessed':'Gömme',
+ 'Other':'Diğer','Coaxial':'Koaksiyel','Power':'Enerji','Control':'Kontrol'};
 const ONE='(Kamera|Kablo|Ağ cihazı|Ekran|Sensör|Bileşen)';
 const PATS=[
  [/^(\d+) kayıt$/,(_,n)=>n+' records'],
@@ -112,14 +116,15 @@ const PATS=[
    'Kullanıcılar okunamadı':'Could not load users','Şifre değiştirilemedi':'Could not change password'}[p])+': '+T(m)],
 ];
 function T(s){
-  if(LANG!=='en'||s==null)return s;
+  if(s==null)return s;
   s=String(s);const m=s.match(/^(\s*)([\s\S]*?)(\s*)$/);const core=m[2];if(!core)return s;
+  if(LANG!=='en'){let r=VALS[core];if(r==null){const mm=core.match(/^(.+) — (\d+\/\d+)$/);if(mm&&VALS[mm[1]])r=VALS[mm[1]]+' — '+mm[2]}return r==null?s:m[1]+r+m[3]}
   let r=DICT[core];
   if(r==null)for(const [re,f] of PATS){const mm=core.match(re);if(mm){r=f(...mm);break}}
   return r==null?s:m[1]+r+m[3];
 }
 function translateTree(root){
-  if(LANG!=='en'||!root)return;
+  if(!root)return;
   if(root.nodeType===3){tText(root);return}
   if(root.nodeType!==1)return;
   tAttrs(root);
@@ -137,7 +142,7 @@ function tText(n){
 function tAttrs(el){
   for(const a of ['placeholder','aria-label','title','alt']){if(el.hasAttribute&&el.hasAttribute(a)){const v=el.getAttribute(a),t=T(v);if(t!==v)el.setAttribute(a,t)}}
 }
-if(LANG==='en'){
+{
   document.title=T(document.title);
   translateTree(document.body);
   new MutationObserver(ms=>{for(const m of ms)for(const n of m.addedNodes)translateTree(n)}).observe(document.body,{childList:true,subtree:true});

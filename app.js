@@ -1,7 +1,7 @@
 /* Gemi Bileşen Kaydı — Supabase sürümü */
 const CATS=[
- {key:'kamera',label:'Kameralar',one:'Kamera',fields:[['ip','IP adresi'],['resolution','Çözünürlük'],['lens','Lens / görüş açısı'],['mount','Montaj tipi',['Tavan','Duvar','Direk','Gömme','Diğer']]]},
- {key:'kablo',label:'Kablolar',one:'Kablo',fields:[['cableType','Kablo tipi',['Cat6','Cat6A','Cat7','Fiber (SM)','Fiber (MM)','Koaksiyel','Enerji','Kontrol','Diğer']],['length','Uzunluk (m)','number'],['label','Kablo etiketi'],['from','Başlangıç noktası'],['to','Bitiş noktası']]},
+ {key:'kamera',label:'Kameralar',one:'Kamera',fields:[['ip','IP adresi'],['resolution','Çözünürlük'],['lens','Lens / görüş açısı'],['mount','Montaj tipi',['Ceiling','Wall','Pole','Recessed','Other']]]},
+ {key:'kablo',label:'Kablolar',one:'Kablo',fields:[['cableType','Kablo tipi',['Cat6','Cat6A','Cat7','Fiber (SM)','Fiber (MM)','Coaxial','Power','Control','Other']],['length','Uzunluk (m)','number'],['label','Kablo etiketi'],['from','Başlangıç noktası'],['to','Bitiş noktası']]},
  {key:'ag',label:'Ağ cihazları',one:'Ağ cihazı',fields:[['ip','IP adresi'],['ports','Port sayısı','number'],['rack','Kabin / rack']]},
  {key:'ekran',label:'Ekranlar',one:'Ekran',fields:[['size','Boyut (inç)','number'],['resolution','Çözünürlük'],['input','Giriş tipi']]},
  {key:'sensor',label:'Sensörler',one:'Sensör',fields:[['sensorType','Sensör tipi'],['range','Ölçüm aralığı']]},
@@ -10,7 +10,7 @@ const CATS=[
 const CAT=Object.fromEntries(CATS.map(c=>[c.key,c]));
 const STATUS=[['ok','Sağlam','good'],['test','Test edildi','good'],['wait','Montaj bekliyor','info'],['fault','Arızalı','bad'],['replace','Değişecek','warn']];
 const ST=Object.fromEntries(STATUS.map(s=>[s[0],s]));
-const ANGLES=['Genel görünüm','Ön','Arka','Sol','Sağ','Üst','Alt','Bağlantı noktası','Etiket / seri no','Montaj yeri','Detay'];
+const ANGLES=['Overview','Front','Back','Left','Right','Top','Bottom','Connection point','Label / serial no','Mounting location','Detail'];
 const COMMON=[['name','Ad / tanım'],['code','Envanter kodu'],['brand','Marka'],['model','Model'],['serial','Seri no']];
 const LOC=[['deck','Güverte (Deck)'],['mvz','Dikey bölge (MVZ)',['MVZ 1','MVZ 2','MVZ 3','MVZ 4','MVZ 5','MVZ 6','MVZ 7','MVZ 8']],['frame','Frame no'],['room','Mahal / kabin no']];
 const DATA_KEYS=[...new Set([...COMMON,...LOC,...CATS.flatMap(c=>c.fields)].map(f=>f[0]).concat(['date','tech','note']))];
@@ -283,7 +283,7 @@ const uid=()=>(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Mat
 async function addPhotos(files){
   if(!modal?.data)return;const d=modal.data;const used=new Set(d.photos.map(p=>p.angle));
   for(const f of files){
-    const angle=ANGLES.find(a=>!used.has(a))||'Detay';used.add(angle);
+    const angle=ANGLES.find(a=>!used.has(a))||'Detail';used.add(angle);
     const ph={pending:true,angle};d.photos.push(ph);renderModal();
     try{const blob=await compress(f);const path=`${S.pid}/${uid()}.jpg`;
       const {error}=await sb.storage.from('photos').upload(path,blob,{contentType:'image/jpeg'});if(error)throw error;
@@ -530,6 +530,7 @@ function renderMenu(){
   <button role="menuitem" data-act="settings">Hesabım</button>
   <button role="menuitem" data-act="myPw">Şifremi değiştir</button>
   <button role="menuitem" data-act="theme">${isDark()?'Açık tema':'Koyu tema'}</button>
+  <button role="menuitem" data-act="lang" data-id="${LANG==='en'?'tr':'en'}">Dil / Language: ${LANG==='en'?'Türkçe':'English'}</button>
   ${isAdmin()?'<button role="menuitem" data-act="users">Kullanıcıları yönet</button>':''}<hr>
   <button role="menuitem" class="danger" data-act="logout">Çıkış yap</button>`;
 }
