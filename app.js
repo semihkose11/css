@@ -107,7 +107,6 @@ function render(){
   if(!session)return;
   const app=$('#app');
   $('#backBtn').hidden=S.view!=='project';
-  $('#hdrSub').textContent=S.view==='project'&&proj()?(proj().ship||proj().name):'Kamera · kablo · ağ cihazı envanteri';
   let h='';if(S.err)h+=`<div class="banner">${esc(S.err)}</div>`;
   h+=S.view==='home'?'':S.view==='settings'?renderSettings():S.view==='users'?renderUsers():S.view==='projects'?renderProjects():renderProject();
   const ae=document.activeElement,aid=ae?.id,pos=ae?.selectionStart;
